@@ -5,16 +5,19 @@ from ...models import User
 from ...erros.api_0_8 import unauthorized, not_found
 from flask import g, request, jsonify
 from flask_httpauth import HTTPBasicAuth
-from hfut import Student
+from flask import current_app
+
 
 authentic = HTTPBasicAuth()
 
 
-@auth.route('/register', methods=['POST'])
+@auth.route('/api_0_8/register', methods=['POST'])
 def register():
-    user = User.check_user(request.values.get('username'),
+    current_app.logger.debug('receive data: id=%s, pw=%s' % (request.values.get('id'),
+                             request.values.get('password')))
+    user = User.check_user(request.values.get('id'),
                            request.values.get('password'))
-    if not user:
+    if user is None:
         return not_found('id or password is wrong')
     return jsonify({'name': user.name,
                     'id': user.id})
@@ -34,8 +37,10 @@ def verify_password(id_or_token, password, campus='hf'):
 @auth.route('/api_0_8/token', methods=['POST'])
 @authentic.login_required
 def get_token():
-    token = g.user.generate_auth_token()
-    return jsonify({'token': token.decode('ascii')})
+    return g.user.generate_auth_token()
+
+
+
 
 
 

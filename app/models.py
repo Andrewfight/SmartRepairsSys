@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 from . import db
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
-from flask import current_app
+from flask import current_app, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
+import hfut.exception
 from hfut import Student
-
+import time
 
 class User(db.Model):
     __tablename__ = 'user'
@@ -16,6 +17,11 @@ class User(db.Model):
     area = db.Column(db.Integer)
     service = db.relationship('Task', backref='user')
     freetime = db.Column(db.PickleType)
+
+    def __init__(self, id, password, name):
+        self.id = id
+        self.password = password
+        self.name = name
 
     @property
     def __repr__(self):
@@ -29,26 +35,39 @@ class User(db.Model):
     def password(self, password):
         self.pw_hash = generate_password_hash(password)
 
-    @staticmethod
-    def check_user(id, password, campus='hf'):
-        stu = Student(id, password, campus)
-        try:
-            info = stu.get_my_info()
-        except:
-            return None
-        try:
-            user = User.query.get(id)
-        except:
-            user = User(id=id, name=info[u'姓名'])
-            user.password = password
-        return user
-
     def verify_password(self, password):
         return check_password_hash(self.pw_hash, password)
 
-    def generate_auth_token(self, expiration=36000):
+    def generate_auth_token(self, expiration=172800):
+        # token有效期2天
         s = Serializer(current_app.config['SECRET_KEY'], expires_in=expiration)
-        return s.dumps({'id': self.id})
+        generate_time = time.time()
+        token = s.dumps({'id': self.id})
+        return jsonify({'token': token.decode('ascii'),
+                        'timeStamp': generate_time,
+                        'expiration': expiration})
+
+    @staticmethod
+    def check_user(id_, password, campus='hf'):
+        stu = Student(id_, password, campus)
+        current_app.logger.debug('%s,%s' % (id_, password))
+        try:
+            info = stu.get_my_info()
+        except hfut.exception.SystemLoginFailed, e:
+            current_app.logger.debug(e)
+            return None
+        try:
+            user = User.query.filter_by(id=id_).first()
+            if user is None:
+                current_app.logger.debug('id %s does not exist' % id_)
+                user = User(id_, password, info[u'姓名'])
+                db.session.add(user)
+                db.session.commit()
+                current_app.logger.debug('id %s insert to db successfully' % id_)
+        except Exception, e:
+            current_app.logger.debug(e)
+            return None
+        return user
 
     @staticmethod
     def verify_auth_token(token):
@@ -80,9 +99,9 @@ class Task(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     area = db.Column(db.Integer)
     task_type = db.Column(db.Integer)
-    user = db.Column(db.Integer, db.ForeignKey('user.id'))
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     submit_time = db.Column(db.DateTime)
-    worker = db.Column(db.Integer, db.ForeignKey('worker.id'))
+    worker_id = db.Column(db.Integer, db.ForeignKey('worker.id'))
     details = db.Column(db.Text)
     change_log = db.Column(db.PickleType)
     is_push = db.Column(db.Boolean)
