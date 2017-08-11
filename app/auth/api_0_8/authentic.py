@@ -34,6 +34,11 @@ def verify_password(id_or_token, password, campus='hf'):
     return True
 
 
+@authentic.error_handler
+def auth_error():
+    return unauthorized('unauthorized access')
+
+
 @auth.route('/api_0_8/token', methods=['POST'])
 @authentic.login_required
 def get_token():
