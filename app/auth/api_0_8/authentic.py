@@ -13,6 +13,26 @@ authentic = HTTPBasicAuth()
 
 @auth.route('/api_0_8/register', methods=['POST'])
 def register():
+    """
+    @api {post} //api_0_8/register 注册用户
+    @apiGroup User
+    @qpiVersion 0.8.0
+    @apiDescription 请求该接口注册新用户
+    @apiParam {string} id 学号
+    @apiParam {string} password 密码
+    @apiParamExample {json} 测试样例：
+                             { id: 2016212039,
+                               password: 123456}
+    @apiSuccess (200) {string} name 用户姓名
+    @apiSuccess (200) {string} id 用户id
+    @apiSuccessExample {json} 测试样例：
+                                { name: XXX,
+                                  id: 2016212039}
+    @apiError UserNotFound 用户id或密码错误
+    @apiErrorExample {json} 返回样例：
+    { error: not found,
+      message: id or password is wrong}
+    """
     current_app.logger.debug('receive data: id=%s, pw=%s' % (request.values.get('id'),
                              request.values.get('password')))
     user = User.check_user(request.values.get('id'),
