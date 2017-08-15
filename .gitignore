@@ -1,1 +1,5 @@
 /env
+*.sqlite
+*.pyc
+.idea
+test.py
